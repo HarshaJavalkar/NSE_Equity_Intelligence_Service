@@ -1,0 +1,91 @@
+<div class="dash-heading">
+  <div>
+    <p class="eyebrow">DATA OPERATIONS</p>
+    <h1>NSE ingestion</h1>
+    <p>Report fetch and enrichment status</p>
+  </div>
+  <div class="ingestion-actions">
+    <button
+      class="button button-dark"
+      [disabled]="starting() || isRunning()"
+      (click)="startFetch()"
+    >
+      <svg lucideIcon="workflow"></svg>
+      {{ isRunning() ? 'Fetch in progress' : starting() ? 'Starting fetch' : 'Fetch all reports' }}
+    </button>
+    <button
+      class="icon-button"
+      title="Refresh status"
+      aria-label="Refresh status"
+      [disabled]="loading()"
+      (click)="refresh()"
+    >
+      <svg lucideIcon="activity"></svg>
+    </button>
+  </div>
+</div>
+
+@if (message()) {
+  <div class="notice" [class.notice-error]="job()?.status === 'FAILED'" role="status">
+    {{ message() }}
+  </div>
+}
+
+<section class="panel ingestion-panel" aria-labelledby="ingestion-status-title">
+  <div class="panel-heading">
+    <div>
+      <h2 id="ingestion-status-title">Latest ingestion</h2>
+      <p>Automatic schedule: weekdays from 7:30 PM India time</p>
+    </div>
+    @if (job(); as currentJob) {
+      <span class="job-state" [class]="'job-state state-' + currentJob.status.toLowerCase()">
+        {{ currentJob.status }}
+      </span>
+    }
+  </div>
+
+  @if (job(); as currentJob) {
+    <dl class="job-details">
+      <div>
+        <dt>Trigger</dt>
+        <dd>{{ currentJob.trigger.replaceAll('_', ' ') }}</dd>
+      </div>
+      <div>
+        <dt>Started</dt>
+        <dd>{{ currentJob.startedAt | date: 'medium' }}</dd>
+      </div>
+      <div>
+        <dt>Trade date</dt>
+        <dd>{{ currentJob.result?.tradeDate || currentJob.expectedTradeDate || 'Pending' }}</dd>
+      </div>
+      <div>
+        <dt>Reports archived</dt>
+        <dd>{{ currentJob.result?.reportCount ?? 'Pending' }}</dd>
+      </div>
+      <div>
+        <dt>Enrichment</dt>
+        <dd>{{ currentJob.result?.enrichment?.status || 'Pending' }}</dd>
+      </div>
+      <div>
+        <dt>Matched report rows</dt>
+        <dd>{{ currentJob.result?.enrichment?.matchedRows ?? 'Pending' }}</dd>
+      </div>
+    </dl>
+    @if (currentJob.result?.archiveDirectory) {
+      <p class="archive-path">
+        <svg lucideIcon="database"></svg>{{ currentJob.result?.archiveDirectory }}
+      </p>
+    }
+    @if (currentJob.error) {
+      <p class="job-error" role="alert">{{ currentJob.error }}</p>
+    }
+  } @else {
+    <div class="empty-status">
+      @if (loading()) {
+        <span>Loading ingestion status...</span>
+      } @else {
+        <span>No ingestion job has been recorded.</span>
+      }
+    </div>
+  }
+</section>

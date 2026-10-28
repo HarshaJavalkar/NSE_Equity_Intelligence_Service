@@ -1,0 +1,142 @@
+<div class="dash-heading">
+  <div>
+    <p class="eyebrow">API REFERENCE</p>
+    <h1>Endpoint catalog</h1>
+    <p>Map a credential to only the market-data routes your integration calls.</p>
+  </div>
+</div>
+<section class="panel request-playground">
+  <div class="panel-heading">
+    <div>
+      <h2>Request example</h2>
+      <p>Compose and send a test through the authenticated backend proxy.</p>
+    </div>
+    <span class="code-badge"><svg lucideIcon="code-2"></svg></span>
+  </div>
+  <div class="playground-fields">
+    <label>
+      API base URL<input
+        [(ngModel)]="apiBaseUrl"
+        name="playgroundBaseUrl"
+        placeholder="https://market-core.example.com"
+      />
+    </label>
+    <label>
+      Endpoint<select [(ngModel)]="playgroundEndpointId" name="playgroundEndpoint">
+        @for (endpoint of endpoints(); track endpoint.id) {
+          <option [value]="endpoint.id">{{ endpoint.method }} · {{ endpoint.label }}</option>
+        }
+      </select>
+    </label>
+    @if (selectedEndpoint()?.path?.includes(':symbol')) {
+      <label
+        >Symbol<input [(ngModel)]="playgroundSymbol" name="playgroundSymbol" placeholder="IREDA"
+      /></label>
+    }
+    @if (selectedEndpoint()?.path?.includes(':isin')) {
+      <label
+        >ISIN<input [(ngModel)]="playgroundIsin" name="playgroundIsin" placeholder="INE202E01016"
+      /></label>
+    }
+    @if (playgroundEndpointId === 'market.search') {
+      <label>
+        Search query<input
+          [(ngModel)]="playgroundQuery"
+          name="playgroundQuery"
+          placeholder="Company, symbol or ISIN"
+        />
+      </label>
+    }
+    @if (
+      playgroundEndpointId === 'market.equity.read' ||
+      playgroundEndpointId === 'market.equity.batch'
+    ) {
+      <label
+        >Sections<input
+          [(ngModel)]="playgroundSections"
+          name="playgroundSections"
+          placeholder="market,results"
+      /></label>
+    }
+    @if (playgroundEndpointId === 'market.equity.batch') {
+      <label
+        >Symbols<input
+          [(ngModel)]="playgroundBatchSymbols"
+          name="playgroundBatchSymbols"
+          placeholder="IREDA,XYZ"
+      /></label>
+    }
+  </div>
+  <div class="playground-credentials">
+    <label>
+      Scoped API key<input
+        [(ngModel)]="testApiKey"
+        name="testApiKey"
+        type="password"
+        autocomplete="off"
+        placeholder="wfmk_live_…"
+      />
+    </label>
+  </div>
+  <div class="playground-actions">
+    <span>Your signed-in session and API key are sent only to this backend.</span>
+    <button
+      class="button button-dark button-small"
+      type="button"
+      [disabled]="busy() || !testApiKey.trim()"
+      (click)="sendTestRequest()"
+    >
+      <svg lucideIcon="arrow-right"></svg>{{ busy() ? 'Sending…' : 'Send request' }}
+    </button>
+  </div>
+  @if (playgroundResponse(); as response) {
+    <div class="test-response">
+      <div class="example-toolbar">
+        <span>RESPONSE</span>
+        <span class="response-status" [class.response-error]="response.status >= 400">
+          HTTP {{ response.status || 'NETWORK ERROR' }}
+        </span>
+      </div>
+      <pre><code>{{ response.body }}</code></pre>
+    </div>
+  }
+  <div class="example-request">
+    <div class="example-toolbar">
+      <span>cURL · SERVER-SIDE</span>
+      <button class="quiet-button" type="button" (click)="copyRequestExample()">
+        <svg lucideIcon="copy"></svg>{{ requestCopied() ? 'Copied' : 'Copy example' }}
+      </button>
+    </div>
+    <pre><code>{{ requestExample() }}</code></pre>
+  </div>
+  <p class="playground-note">
+    <svg lucideIcon="shield-check"></svg> The browser sends credentials only to the developer proxy;
+    the proxy verifies your signed-in session and scoped API key before it reads a snapshot. The API
+    key is not persisted.
+  </p>
+</section>
+<section class="panel catalog-panel">
+  <div class="catalog-toolbar">
+    <span>Available routes</span><span>{{ endpoints().length }} endpoints</span>
+  </div>
+  @for (endpoint of endpoints(); track endpoint.id) {
+    <article class="catalog-row">
+      <div class="catalog-method" [class.post-method]="endpoint.method === 'POST'">
+        {{ endpoint.method }}
+      </div>
+      <div class="catalog-route">
+        <strong>{{ endpoint.label }}</strong
+        ><code>{{ endpoint.path }}</code>
+      </div>
+      <div class="catalog-id">{{ endpoint.id }}</div>
+      <button
+        class="icon-button"
+        title="Copy route"
+        aria-label="Copy endpoint route"
+        (click)="copyText(endpoint.path)"
+      >
+        <svg lucideIcon="copy"></svg>
+      </button>
+    </article>
+  }
+</section>

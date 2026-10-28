@@ -1,0 +1,37 @@
+<div class="dash-heading">
+  <div>
+    <p class="eyebrow">YOUR DEVELOPER ACCOUNT</p>
+    <h1>Profile</h1>
+    <p>Update the workspace details associated with your integration.</p>
+  </div>
+</div>
+<section class="panel profile-panel">
+  <div class="profile-avatar">{{ profile?.name?.slice(0, 1) || 'W' }}</div>
+  <div class="profile-email">
+    <strong>{{ profile?.email }}</strong>
+    <span>Developer account · Joined {{ profile?.createdAt | date: 'longDate' }}</span>
+  </div>
+  <form (ngSubmit)="saveProfile()">
+    <label class="field-label">
+      FULL NAME<input
+        [(ngModel)]="profileForm.name"
+        name="profileName"
+        required
+        minlength="2"
+        maxlength="100"
+      />
+    </label>
+    <label class="field-label">
+      ORGANIZATION<input
+        [(ngModel)]="profileForm.organization"
+        name="profileOrganization"
+        required
+        minlength="2"
+        maxlength="120"
+      />
+    </label>
+    <button class="button button-dark" type="submit" [disabled]="busy()">
+      Save profile <svg lucideIcon="check"></svg>
+    </button>
+  </form>
+</section>

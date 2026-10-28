@@ -1,4 +1,5 @@
 # WhyFolio NSE Equity Intelligence Service
+
 ## Production System Design & Copilot Implementation Specification
 
 **Document type:** Production architecture / implementation contract  
@@ -8,9 +9,13 @@
 **Canonical serving unit:** One normalized security snapshot object per security  
 **Design rule:** Never fabricate, infer, or silently overwrite source data
 
+## Implementation Status
+
+Status snapshot: 2026-10-07. `COMPLETE` means the section's requirements are implemented. `PARTIAL` means only design or foundation work exists. `NOT STARTED` means no implementation exists.
+
 ---
 
-# 1. Problem Statement
+# 1. Problem Statement [STATUS: PARTIAL]
 
 WhyFolio currently needs equity-market, corporate-filing, financial-result, corporate-action and security-level information from multiple sources.
 
@@ -48,7 +53,7 @@ The purpose is to fetch NSE-published equity information once per trading day, n
 
 ---
 
-# 2. Architectural Decisions
+# 2. Architectural Decisions [STATUS: PARTIAL]
 
 ## 2.1 Repository Independence
 
@@ -92,7 +97,7 @@ This keeps reads bounded and prevents a single giant Redis object from becoming 
 
 ---
 
-# 3. Official NSE Source Domains
+# 3. Official NSE Source Domains [STATUS: PARTIAL]
 
 The service must consume only official NSE sources for NSE-originated data.
 
@@ -121,7 +126,7 @@ Official source catalog must be verified at implementation time from the NSE web
 
 ---
 
-# 4. Source Registry
+# 4. Source Registry [STATUS: COMPLETE]
 
 Create a single registry:
 
@@ -133,17 +138,17 @@ Every source definition must contain:
 
 ```js
 {
-  id,
-  category,
-  officialPage,
-  discoveryMethod,
-  reportName,
-  frequency,
-  expectedFormat,
-  dateParameter,
-  parser,
-  normalizer,
-  enabled
+  (id,
+    category,
+    officialPage,
+    discoveryMethod,
+    reportName,
+    frequency,
+    expectedFormat,
+    dateParameter,
+    parser,
+    normalizer,
+    enabled);
 }
 ```
 
@@ -153,7 +158,7 @@ The registry is the only place that defines source discovery.
 
 ---
 
-# 5. Source Categories
+# 5. Source Categories [STATUS: PARTIAL]
 
 ## 5.1 Market / EOD
 
@@ -261,7 +266,7 @@ Preserve the original filing classification and reporting period.
 
 ---
 
-# 6. Data Classification
+# 6. Data Classification [STATUS: PARTIAL]
 
 Every field entering the canonical dataset must be classified as one of:
 
@@ -275,9 +280,11 @@ UNAVAILABLE
 
 Never classify an inferred value as `REPORTED_NSE`.
 
+The runtime classification schema is defined in `src/schemas/classified-value-schema.js`. It requires source provenance for reported fields and events, input evidence for calculations, a usable reference for documents, and an explicit reason for unavailable values. Parsed records and canonical snapshots do not yet use this schema; this section remains partial until that integration is implemented.
+
 ---
 
-# 7. End-to-End Architecture
+# 7. End-to-End Architecture [STATUS: PARTIAL]
 
 ```text
                          NSE INDIA
@@ -323,7 +330,7 @@ Never classify an inferred value as `REPORTED_NSE`.
 
 ---
 
-# 8. Repository Structure
+# 8. Repository Structure [STATUS: PARTIAL]
 
 Use the repository's existing language/tooling if already established.
 
@@ -385,14 +392,15 @@ whyfolio-nse-data-service/
 │
 ├── docs/
 │
-├── .env.example
 ├── package.json
 └── README.md
 ```
 
 ---
 
-# 9. Ingestion Pipeline
+# 9. Ingestion Pipeline [STATUS: PARTIAL]
+
+The first daily source pair is implemented: the CM-UDiFF Common Bhavcopy Final and NSE-listed security master are discovered from the All Reports page's UI-backed daily-reports feed, fetched from the archive paths returned by that feed, parsed, validated, joined by ISIN, and published to versioned Redis snapshot/index keys. Run `npm run ingest:nse` to perform a one-shot ingestion. The feed endpoint is used by NSE's page but is not a documented public API; discovery and response shapes are checked at runtime and ingestion fails closed if they change. The daily scheduler and all other report/filing sources remain unimplemented.
 
 The daily pipeline is:
 
@@ -430,7 +438,7 @@ No step may publish incomplete data.
 
 ---
 
-# 10. Daily Scheduling
+# 10. Daily Scheduling [STATUS: NOT STARTED]
 
 Do not assume every NSE report becomes available at the same clock time.
 
@@ -456,7 +464,7 @@ Do not hardcode undocumented timing assumptions.
 
 ---
 
-# 11. Idempotent Ingestion
+# 11. Idempotent Ingestion [STATUS: NOT STARTED]
 
 Every source ingestion must have an identity:
 
@@ -479,7 +487,7 @@ same date + corrected official report
 
 ---
 
-# 12. Security Identity Resolution
+# 12. Security Identity Resolution [STATUS: NOT STARTED]
 
 Canonical identity:
 
@@ -522,7 +530,7 @@ Do not guess.
 
 ---
 
-# 13. Canonical Security Snapshot
+# 13. Canonical Security Snapshot [STATUS: NOT STARTED]
 
 Redis value:
 
@@ -577,7 +585,7 @@ Example:
 
 ---
 
-# 14. Provenance Model
+# 14. Provenance Model [STATUS: NOT STARTED]
 
 Every source record must have a source reference:
 
@@ -600,10 +608,7 @@ For normalized/calculated values:
 ```json
 {
   "sourceType": "CALCULATED",
-  "inputs": [
-    "EVD-NSE-000001",
-    "EVD-NSE-000004"
-  ]
+  "inputs": ["EVD-NSE-000001", "EVD-NSE-000004"]
 }
 ```
 
@@ -618,7 +623,7 @@ reported/calculated
 
 ---
 
-# 15. Raw Documents vs Redis
+# 15. Raw Documents vs Redis [STATUS: NOT STARTED]
 
 Do not use Redis as a raw document archive.
 
@@ -638,7 +643,7 @@ Redis is the serving layer, not the permanent document archive.
 
 ---
 
-# 16. Redis Versioning
+# 16. Redis Versioning [STATUS: PARTIAL]
 
 Use versioned snapshots:
 
@@ -668,9 +673,11 @@ Example:
 }
 ```
 
+The read API resolves `datasetVersion` from `nse:eq:dataset:latest` and reads `nse:eq:v:{datasetVersion}:security:{isin}`. Symbol lookup and search use version-scoped hashes `nse:eq:v:{datasetVersion}:index:symbol` and `nse:eq:v:{datasetVersion}:index:search`. The ingestion writer is not implemented yet; it must write those indexes before publishing the latest pointer.
+
 ---
 
-# 17. Atomic Publication
+# 17. Atomic Publication [STATUS: NOT STARTED]
 
 Never directly overwrite the active snapshot while ingestion is still running.
 
@@ -701,7 +708,7 @@ This prevents a failed daily download from deleting yesterday's valid dataset.
 
 ---
 
-# 18. TTL Policy
+# 18. TTL Policy [STATUS: NOT STARTED]
 
 The TTL must be aligned to the next daily refresh window.
 
@@ -719,37 +726,37 @@ The TTL is therefore refresh-aligned rather than blindly set to exactly 24 hours
 
 ---
 
-# 19. API Design
+# 19. API Design [STATUS: PARTIAL]
 
 The API should expose business-oriented sections.
 
 ### Full security snapshot
 
 ```http
-GET /api/v1/equities/:symbol
+GET /api/v1/market/equities/:symbol
 ```
 
 ### Specific data
 
 ```http
-GET /api/v1/equities/:symbol?sections=market
-GET /api/v1/equities/:symbol?sections=financialResults
-GET /api/v1/equities/:symbol?sections=corporateActions
-GET /api/v1/equities/:symbol?sections=announcements
-GET /api/v1/equities/:symbol?sections=xbrl
-GET /api/v1/equities/:symbol?sections=derived
+GET /api/v1/market/equities/:symbol?sections=market
+GET /api/v1/market/equities/:symbol?sections=results
+GET /api/v1/market/equities/:symbol?sections=corporateActions
+GET /api/v1/market/equities/:symbol?sections=announcements
+GET /api/v1/market/equities/:symbol?sections=xbrl
+GET /api/v1/market/equities/:symbol?sections=derived
 ```
 
 ### Multiple sections
 
 ```http
-GET /api/v1/equities/:symbol?sections=market,financialResults,corporateActions
+GET /api/v1/market/equities/:symbol?sections=market,results,corporateActions
 ```
 
 ### Batch
 
 ```http
-POST /api/v1/equities/batch
+POST /api/v1/market/equities/batch
 ```
 
 Body:
@@ -764,8 +771,12 @@ Body:
 ### Dataset status
 
 ```http
-GET /api/v1/dataset/status
+GET /api/v1/market/dataset/status
 ```
+
+Additional authenticated endpoints are `GET /api/v1/market/search?q=`, `GET /api/v1/market/securities/:isin`, and section projections at `/api/v1/market/equities/:symbol/:section`. All `/api/v1/market/*` routes require a WhyFolio JWT. `GET /health` is public liveness; `/health/redis`, `/health/ready`, and `/health/nse` require the internal service credential.
+
+The developer control plane exposes registration/login, authenticated profile read/update, an endpoint catalog, API-key create/list/scope-update/revoke, and daily endpoint usage routes under `/api/v1/developer`. These routes use a separate short-lived developer session and do not grant market-data access. Every market request also requires an `X-API-Key` whose endpoint scope matches the requested route. The key secret is returned once and stored as a hash.
 
 ### Service health
 
@@ -777,7 +788,7 @@ GET /health/nse
 
 ---
 
-# 20. API Response Contract
+# 20. API Response Contract [STATUS: PARTIAL]
 
 Every response includes:
 
@@ -803,7 +814,7 @@ UNAVAILABLE
 
 ---
 
-# 21. Partial Data Rules
+# 21. Partial Data Rules [STATUS: NOT STARTED]
 
 If one NSE source fails:
 
@@ -826,7 +837,7 @@ Do not mark the entire security unavailable when only one source is unavailable.
 
 ---
 
-# 22. Validation Rules
+# 22. Validation Rules [STATUS: PARTIAL]
 
 ## HTTP
 
@@ -866,7 +877,7 @@ validation failed → preserve previous dataset
 
 ---
 
-# 23. Financial-Result Normalization
+# 23. Financial-Result Normalization [STATUS: NOT STARTED]
 
 Because NSE filings can differ across companies, preserve:
 
@@ -898,7 +909,7 @@ Only populate a normalized field when the source mapping is deterministic.
 
 ---
 
-# 24. Announcements and Documents
+# 24. Announcements and Documents [STATUS: NOT STARTED]
 
 Store both:
 
@@ -928,7 +939,7 @@ Do not summarize the document inside ingestion.
 
 ---
 
-# 25. Deterministic Calculations
+# 25. Deterministic Calculations [STATUS: NOT STARTED]
 
 Calculations must be executed by code.
 
@@ -950,7 +961,7 @@ Never ask the LLM to perform basic deterministic arithmetic when the backend can
 
 ---
 
-# 26. Data Freshness Model
+# 26. Data Freshness Model [STATUS: NOT STARTED]
 
 Every section must expose:
 
@@ -977,7 +988,7 @@ STALE
 
 ---
 
-# 27. Error Handling
+# 27. Error Handling [STATUS: PARTIAL]
 
 The service must distinguish:
 
@@ -995,7 +1006,7 @@ Never replace a real failure with an empty successful response.
 
 ---
 
-# 28. Retry Policy
+# 28. Retry Policy [STATUS: NOT STARTED]
 
 Use bounded retries:
 
@@ -1017,7 +1028,7 @@ Do not continuously poll an unavailable report.
 
 ---
 
-# 29. Concurrency Control
+# 29. Concurrency Control [STATUS: NOT STARTED]
 
 Only one ingestion run for the same dataset date may publish.
 
@@ -1038,7 +1049,7 @@ The lock must have a finite TTL.
 
 ---
 
-# 30. Ingestion State Machine
+# 30. Ingestion State Machine [STATUS: NOT STARTED]
 
 ```text
 SCHEDULED
@@ -1073,7 +1084,7 @@ A previous READY dataset remains active after a failed replacement.
 
 ---
 
-# 31. Observability
+# 31. Observability [STATUS: PARTIAL]
 
 Track:
 
@@ -1104,9 +1115,11 @@ currentDatasetStatus
 
 Logs must include the source and report, not sensitive credentials.
 
+The developer control plane records per-key, per-endpoint daily request and response-class counts. Ingestion run/source/snapshot observability is not implemented yet.
+
 ---
 
-# 32. Metrics
+# 32. Metrics [STATUS: NOT STARTED]
 
 Expose service metrics:
 
@@ -1124,7 +1137,7 @@ nse_api_request_duration_seconds
 
 ---
 
-# 33. Security
+# 33. Security [STATUS: PARTIAL]
 
 Environment variables:
 
@@ -1136,6 +1149,15 @@ NSE_MAX_RETRIES
 INGESTION_SCHEDULE
 ARCHIVE_STORAGE_CONFIG
 API_AUTH_CONFIG
+WHYFOLIO_JWT_SECRET
+WHYFOLIO_JWT_ISSUER
+WHYFOLIO_JWT_AUDIENCE
+DEVELOPER_JWT_SECRET
+DEVELOPER_JWT_ISSUER
+DEVELOPER_JWT_AUDIENCE
+SERVICE_TO_SERVICE_TOKEN
+MONGODB_URI
+MONGODB_DB_NAME
 ```
 
 Never hardcode:
@@ -1149,9 +1171,11 @@ API keys
 
 All downstream APIs must support authentication before production exposure.
 
+Market-data routes require a WhyFolio JWT plus a scoped developer API key. Developer sessions and internal service credentials are separate. The portal currently stores its short-lived session in `sessionStorage`; production still requires HTTPS, restrictive origin/proxy policy, secret rotation, account recovery/email verification, and identity-provider integration.
+
 ---
 
-# 34. Performance Requirements
+# 34. Performance Requirements [STATUS: NOT STARTED]
 
 The ingestion system must perform work in bulk wherever NSE provides bulk reports.
 
@@ -1181,7 +1205,7 @@ without making live NSE requests.
 
 ---
 
-# 35. WhyFolio Dependency Reduction
+# 35. WhyFolio Dependency Reduction [STATUS: NOT STARTED]
 
 After this service is operational:
 
@@ -1208,7 +1232,7 @@ provenance
 
 ---
 
-# 36. Copilot Implementation Rules
+# 36. Copilot Implementation Rules [STATUS: PARTIAL]
 
 Before modifying code:
 
@@ -1235,7 +1259,7 @@ Do not change unrelated behavior.
 
 ---
 
-# 37. Definition of Done
+# 37. Definition of Done [STATUS: NOT STARTED]
 
 The repository is complete when:
 
@@ -1265,7 +1289,7 @@ The repository is complete when:
 
 ---
 
-# 38. Required First Copilot Task
+# 38. Required First Copilot Task [STATUS: COMPLETE]
 
 Before implementing the full service, Copilot must produce:
 
@@ -1278,4 +1302,3 @@ Before implementing the full service, Copilot must produce:
 7. Test strategy.
 
 Do not write the entire application until this design is inspected for consistency.
-

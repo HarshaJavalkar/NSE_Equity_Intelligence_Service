@@ -1,0 +1,97 @@
+<div class="dash-heading">
+  <div>
+    <p class="eyebrow">YOUR MARKET DATA WORKSPACE</p>
+    <h1>Good morning, {{ profile?.name?.split(' ')?.[0] || 'developer' }}.</h1>
+    <p>Manage API access and see how your applications use Market Core.</p>
+  </div>
+  <button class="button button-dark" (click)="navigateTo.emit('keys')">
+    <svg lucideIcon="plus"></svg> Create API key
+  </button>
+</div>
+<div class="stat-grid">
+  <article class="stat-block">
+    <span>Requests · 30 days</span><strong>{{ endpointTotal() | number }}</strong>
+    <small><svg lucideIcon="activity"></svg> Across your endpoint access</small>
+  </article>
+  <article class="stat-block">
+    <span>Active API keys</span><strong>{{ activeKeys() }}</strong>
+    <small><svg lucideIcon="key-round"></svg> {{ keys().length }} total credentials</small>
+  </article>
+  <article class="stat-block">
+    <span>Available endpoints</span><strong>{{ endpoints().length }}</strong>
+    <small><svg lucideIcon="route"></svg> Scope each key to its job</small>
+  </article>
+  <article class="stat-block stat-status">
+    <span>Dataset connection</span><strong><i></i> API access</strong>
+    <small>Data availability depends on publication status</small>
+  </article>
+</div>
+<div class="dashboard-columns">
+  <section class="panel usage-panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Recent API activity</h2>
+        <p>Daily endpoint usage for the last 30 days</p>
+      </div>
+      <button class="quiet-button" (click)="navigateTo.emit('endpoints')">
+        Endpoint catalog <svg lucideIcon="arrow-right"></svg>
+      </button>
+    </div>
+    @if (usage().length) {
+      <div class="usage-table">
+        <div class="table-head">
+          <span>DATE</span><span>ENDPOINT</span><span>REQUESTS</span><span>SUCCESS</span>
+        </div>
+        @for (row of usage().slice(0, 8); track row.date + row.endpointId) {
+          <div class="table-row">
+            <span>{{ row.date }}</span
+            ><span>{{ endpointLabel(row.endpointId) }}</span>
+            <span>{{ row.requests | number }}</span
+            ><span>{{ row.successes | number }}</span>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <span class="empty-icon"><svg lucideIcon="chart-no-axes-column-increasing"></svg></span>
+        <strong>No usage yet</strong>
+        <p>
+          Create a scoped key to start wiring your application. Request analytics will appear here.
+        </p>
+        <button class="link-button" (click)="navigateTo.emit('keys')">
+          Create your first key <svg lucideIcon="arrow-right"></svg>
+        </button>
+      </div>
+    }
+  </section>
+  <section class="panel quickstart">
+    <div class="panel-heading">
+      <div>
+        <h2>Quick start</h2>
+        <p>First request setup</p>
+      </div>
+      <span class="code-badge"><svg lucideIcon="code-2"></svg></span>
+    </div>
+    <ol>
+      <li><b>01</b><span>Create a key with only the endpoints you need.</span></li>
+      <li><b>02</b><span>Store the secret in your server environment.</span></li>
+      <li><b>03</b><span>Send the key and WhyFolio JWT from your backend.</span></li>
+    </ol>
+    <div class="code-sample">
+      <div>
+        <span>REQUEST</span>
+        <button title="Open API keys" aria-label="Open API keys" (click)="navigateTo.emit('keys')">
+          <svg lucideIcon="arrow-up-right"></svg>
+        </button>
+      </div>
+      <code
+        >curl -H "Authorization: Bearer $WHYFOLIO_JWT" \<br />&nbsp; -H "X-API-Key: $MARKET_KEY"
+        \<br />&nbsp; {{ '{' }}/api/v1/market/equities/IREDA{{ '}' }}</code
+      >
+    </div>
+    <p class="server-only">
+      <svg lucideIcon="shield-check"></svg> Make requests server-to-server. Never ship secrets to a
+      browser.
+    </p>
+  </section>
+</div>
